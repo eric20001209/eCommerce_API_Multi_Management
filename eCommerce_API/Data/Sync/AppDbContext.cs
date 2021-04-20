@@ -1,16 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Sync.Models;
 
 namespace Sync.Data
 {
 	public partial class AppDbContext : DbContext
 	{
-        public AppDbContext(DbContextOptions<AppDbContext> options)
+        private readonly IConfiguration _configuration;
+        private IDbConnection DbConnection { get; }
+        public AppDbContext(DbContextOptions<AppDbContext> options, IConfiguration configuration)
             : base(options)
+        {
+            this._configuration = configuration;
+            DbConnection = new SqlConnection(this._configuration.GetConnectionString("rst374_cloud12Context"));
+        }
+
+        public AppDbContext()
         {
         }
 
@@ -50,7 +61,8 @@ namespace Sync.Data
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
-               
+                optionsBuilder.UseSqlServer(DbConnection.ToString());
+
             }
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)

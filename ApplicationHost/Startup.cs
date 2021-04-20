@@ -35,6 +35,7 @@ namespace ApplicationHost
 
             services.AddDbContext<ApplicationHostDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("ApplicationHostDbContext")));
 
+
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
 
@@ -61,6 +62,8 @@ namespace ApplicationHost
                 routes.MapRoute(
                     name: "default",
                     template: "{controller=HostTenants}/{action=Index}/{id?}");
+                routes.MapRoute(
+                    name:"api",template: "api/{controller=tenant}/{id?}");
             });
         }
     }

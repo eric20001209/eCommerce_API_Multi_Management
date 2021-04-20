@@ -62,9 +62,12 @@ namespace eCommerce_API
                     options.UseSqlServer(Configuration.GetConnectionString("rst374_cloud12Context")));
             /* Sync dbcontext*/
             services.AddDbContext<AppDbContext>(options =>
-                    options.UseSqlServer(Configuration.GetConnectionString("rst374_cloud12Context")),ServiceLifetime.Transient);
+                    options.UseSqlServer(Configuration.GetConnectionString("rst374_cloud12Context")), ServiceLifetime.Transient);
             /* mreport dbcontext*/
             services.AddDbContext<farroContext>(o => o.UseSqlServer(Configuration.GetConnectionString("rst374_cloud12Context")));
+
+            //register configuration
+            services.AddSingleton(provider => Configuration);
 
             services.AddCors();
 //          string connectionString = @"Server=192.168.1.204\sql2012;Database=wanfang_cloud14;User Id=eznz;password=9seqxtf7";

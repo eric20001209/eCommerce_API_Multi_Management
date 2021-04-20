@@ -31,7 +31,9 @@ namespace Sync.Controllers
 		private readonly IButton _button;
 		private readonly ICard _card;
 	//	private readonly IMapper _mapper;
-		public SyncController(IConfiguration config, Data.AppDbContext context, IItem item, IButton button, ICard card, ILogger<SyncController> logger
+		public SyncController(IConfiguration config, 
+			Data.AppDbContext context, 
+			IItem item, IButton button, ICard card, ILogger<SyncController> logger
 							//	, IMapper mapper
 								)
 		{

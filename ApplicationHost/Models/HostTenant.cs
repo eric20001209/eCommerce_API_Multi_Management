@@ -11,6 +11,7 @@ namespace ApplicationHost.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Display(Name ="Tenant Id")]
         public int Id { get; set; }
         public string TradingName { get; set; }
         public string DbConnectionString { get; set; }
