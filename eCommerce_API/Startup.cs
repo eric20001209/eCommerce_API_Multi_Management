@@ -25,7 +25,8 @@ using DinkToPdf;
 using DinkToPdf.Contracts;
 using Sync.Data;
 using FarroAPI.Entities;
-
+using eCommerce_API_RST_Multi.Data;
+using Microsoft.AspNetCore.Http;
 
 namespace eCommerce_API
 {
@@ -55,6 +56,11 @@ namespace eCommerce_API
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Startup.Configuration["TokenSecretKey"]))
                 };
             });
+
+            /* host dbcontext */
+            services.AddDbContext<HostDbContext>(options =>
+                        options.UseSqlServer(Configuration.GetConnectionString("hostDbContext")));
+
             /*  ecom dbcontext*/
             services.AddDbContext<rst374_cloud12Context>(options =>
                     options.UseSqlServer(Configuration.GetConnectionString("rst374_cloud12Context")));
@@ -68,6 +74,9 @@ namespace eCommerce_API
 
             //register configuration
             services.AddSingleton(provider => Configuration);
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            //services.AddSingleton<HttpContext>();
+            services.AddHttpContextAccessor();
 
             services.AddCors();
 //          string connectionString = @"Server=192.168.1.204\sql2012;Database=wanfang_cloud14;User Id=eznz;password=9seqxtf7";
@@ -143,9 +152,14 @@ namespace eCommerce_API
             //    cfg.CreateMap<Models.CodeRelations, Dto.ItemDto>();
             //    cfg.CreateMap<Models.OrderItem, Dto.OrderItemDto>();
             //});
-                
-
-            app.UseMvc();
+            //app.UsePathBase("/{hostId}");
+            app.UseMvc(
+                //routes=> {
+                //    routes.MapRoute(
+                //    name: "default",
+                //    template: "{area:hostId}/api/{controller=sync}/{auth}/{action=getcard}/{branchId?}");
+                //}
+                );
         }
     }
 }

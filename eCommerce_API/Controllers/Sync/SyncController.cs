@@ -20,7 +20,7 @@ using System.Net;
 namespace Sync.Controllers
 {
 	[AllowAnonymous]
-	[Route("api/sync")]
+	[Route("api/sync/{hostId}")]
 	[ApiController]
 	public class SyncController : ControllerBase
 	{
@@ -30,11 +30,13 @@ namespace Sync.Controllers
 		private readonly IItem _item;
 		private readonly IButton _button;
 		private readonly ICard _card;
+//		private readonly IHttpContextAccessor _httpContextAccessor;
 	//	private readonly IMapper _mapper;
 		public SyncController(IConfiguration config, 
 			Data.AppDbContext context, 
 			IItem item, IButton button, ICard card, ILogger<SyncController> logger
 							//	, IMapper mapper
+							//, IHttpContextAccessor httpContextAccessor
 								)
 		{
 			_config = config;
@@ -43,7 +45,8 @@ namespace Sync.Controllers
 			_button = button;
 			_logger = logger;
 			_card = card;
-//			_mapper = mapper;
+			//			_mapper = mapper;
+
 		}
 		[HttpGet("{auth}/status")]
 		public async Task<IActionResult> getBranchUpdateStatus(string auth, [FromQuery] int branch)
@@ -282,7 +285,7 @@ namespace Sync.Controllers
 
 		}
 
-		[HttpGet("{auth}/getcard/{branchId}")]
+		[HttpGet("{auth}/getcard/{branchId}",Name = "getcard")]
 		public async Task<IActionResult> getCard(int branchId, [FromQuery] Pagination pagination)
 		{
 			var messageDto = new MessageDto();

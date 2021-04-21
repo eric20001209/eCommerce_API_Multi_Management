@@ -7,18 +7,33 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Sync.Models;
+using eCommerce_API_RST_Multi.Data;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+
 
 namespace Sync.Data
 {
 	public partial class AppDbContext : DbContext
 	{
         private readonly IConfiguration _configuration;
-        private IDbConnection DbConnection { get; }
-        public AppDbContext(DbContextOptions<AppDbContext> options, IConfiguration configuration)
+        private readonly HostDbContext _context;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private IDbConnection DbConnection { get; set; }
+        private int HostId { get; set; }
+        public AppDbContext(DbContextOptions<AppDbContext> options, IConfiguration configuration, HostDbContext context,
+                        IHttpContextAccessor httpContextAccessor
+                    )
             : base(options)
         {
+
+            _context = context;
+            _httpContextAccessor = httpContextAccessor;
+            var hostId = _httpContextAccessor.HttpContext.GetRouteValue("hostId").ToString();
+                // ttpContextAccessor.HttpContext.Request.RouteValues["hostId"];    //this is for .net core 3
+
             this._configuration = configuration;
-            DbConnection = new SqlConnection(this._configuration.GetConnectionString("rst374_cloud12Context"));
+            HostId = int.Parse(hostId);
         }
 
         public AppDbContext()
@@ -58,11 +73,21 @@ namespace Sync.Data
         public virtual DbSet<WorkTime> WorkTimes { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            if (!optionsBuilder.IsConfigured)
+ //         if (!optionsBuilder.IsConfigured)
             {
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
-                optionsBuilder.UseSqlServer(DbConnection.ToString());
-
+                //#warning To protect potentially sensitive information in your connection string, you should move it out of source code. See http://go.microsoft.com/fwlink/?LinkId=723263 for guidance on storing connection strings.
+                //      var connectionString = _context.HostTenants.Where(c => c.Id == )
+                //var hostId = hostId;// _configuration["HostId"];
+                var host = _context.HostTenants.Where(c => c.Id == HostId).FirstOrDefault();
+                if (host != null)
+                {
+                    var connectionString = host.DbConnectionString;
+                    DbConnection = new SqlConnection(this._configuration.GetConnectionString(connectionString));
+                    //optionsBuilder.UseSqlServer(DbConnection.ToString());
+                    optionsBuilder.UseSqlServer(connectionString);
+                }
+                else
+                    DbConnection = new SqlConnection(this._configuration.GetConnectionString("rst374_cloud12Context"));
             }
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
