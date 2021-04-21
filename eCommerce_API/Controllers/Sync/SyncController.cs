@@ -20,7 +20,7 @@ using System.Net;
 namespace Sync.Controllers
 {
 	[AllowAnonymous]
-	[Route("api/sync/{hostId}")]
+	[Route("{hostId}/api/sync")]
 	[ApiController]
 	public class SyncController : ControllerBase
 	{
