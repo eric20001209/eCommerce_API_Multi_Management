@@ -19,9 +19,12 @@ namespace ApplicationHost
         }
 
         // GET: HostTenants
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string keyword)
         {
-            return View(await _context.HostTenants.ToListAsync());
+            var final = _context.HostTenants.Where(ht => keyword == null ? true : (ht.DbConnectionString.Contains(keyword)
+                         || ht.TradingName.Contains(keyword)));
+
+            return View(await final.ToListAsync());
         }
 
         // GET: HostTenants/Details/5

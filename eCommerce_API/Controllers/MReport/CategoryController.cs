@@ -17,7 +17,7 @@ namespace FarroAPI.Controllers
         {
             this._context = context;
         }
-        [HttpGet("api/Categories/Item")]
+        [HttpGet("{hostId}/api/Categories/Item")]
         public async Task<IActionResult> GetItemCategories()
         {
             _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;

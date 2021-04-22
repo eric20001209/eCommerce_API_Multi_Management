@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FarroAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("{hostId}/api/[controller]")]
     [ApiController]
     public class ItemReportController : ControllerBase
     {

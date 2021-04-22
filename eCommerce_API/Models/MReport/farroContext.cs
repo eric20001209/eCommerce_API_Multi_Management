@@ -1,4 +1,10 @@
 ﻿using System;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using eCommerce_API_RST_Multi.Data;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Configuration;
@@ -7,9 +13,33 @@ namespace FarroAPI.Entities
 {
     public partial class farroContext : DbContext
     {
-        public farroContext(DbContextOptions<farroContext> options)
+        private readonly IConfiguration _configuration;
+        private readonly HostDbContext _context;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private IDbConnection DbConnection { get; set; }
+        private int HostId { get; set; }
+        public farroContext()
+        {
+
+        }
+
+        public farroContext(DbContextOptions<farroContext> options, IConfiguration configuration, HostDbContext context,
+                        IHttpContextAccessor httpContextAccessor)
             : base(options)
         {
+            _context = context;
+            _httpContextAccessor = httpContextAccessor;
+            this._configuration = configuration;
+            try
+            {
+                var hostId = _httpContextAccessor.HttpContext.GetRouteValue("hostId").ToString();
+                HostId = int.Parse(hostId);
+            }
+            catch (Exception ex)
+            {
+                ex.ToString();
+            }
+
         }
 
         public virtual DbSet<Branch> Branch { get; set; }
@@ -27,6 +57,16 @@ namespace FarroAPI.Entities
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
+            var host = _context.HostTenants.Where(c => c.Id == HostId).FirstOrDefault();
+            if (host != null)
+            {
+                var connectionString = host.DbConnectionString;
+                DbConnection = new SqlConnection(this._configuration.GetConnectionString(connectionString));
+                //optionsBuilder.UseSqlServer(DbConnection.ToString());
+                optionsBuilder.UseSqlServer(connectionString);
+            }
+            else
+                DbConnection = new SqlConnection(this._configuration.GetConnectionString("rst374_cloud12Context"));
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

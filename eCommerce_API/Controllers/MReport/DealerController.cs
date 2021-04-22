@@ -9,7 +9,7 @@ using FarroAPI.Models;
 
 namespace FarroAPI.Controllers
 {
-    [Route("api/dealers")]
+    [Route("{hostId}/api/dealers")]
     public class DealerController : Controller
     {
         private readonly farroContext _context;

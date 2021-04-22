@@ -12,7 +12,7 @@ using System.Diagnostics;
 
 namespace FarroAPI.Controllers
 {
-    [Route("api/SalesCategoryBranchReport")]
+    [Route("{hostId}/api/SalesCategoryBranchReport")]
     public class SalesCategoryBranchReportController : Controller
     {
         private readonly farroContext _context;

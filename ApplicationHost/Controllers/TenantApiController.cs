@@ -11,10 +11,10 @@ namespace ApplicationHost.Controllers
 {
     [Route("api/tenant")]
     [ApiController]
-    public class TenantController : ControllerBase
+    public class TenantApiController : ControllerBase
     {
         private readonly ApplicationHostDbContext _context;
-        public TenantController(ApplicationHostDbContext context)
+        public TenantApiController(ApplicationHostDbContext context)
         {
             _context = context;
         }

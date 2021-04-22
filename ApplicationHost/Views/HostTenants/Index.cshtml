@@ -9,6 +9,26 @@
 <p>
     <a asp-action="Create">Create New</a>
 </p>
+
+
+@* <form asp-controller="HostTenants" asp-action="Index" method="GET"> *@
+@using (Html.BeginForm("Index", "HostTenants", "Get"))
+{
+    <div class="row">
+        <div class="col-xs-6 col-md-4">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Search" id="txtSearch" name="keyword" />
+                <div class="input-group-btn">
+                    <button class="btn btn-primary" type="submit">
+                        @*<span class="glyphicon glyphicon-search"></span>*@
+                        Search
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@*</form>*@
 <table class="table">
     <thead>
         <tr>
@@ -25,23 +45,24 @@
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.TradingName)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DbConnectionString)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Id)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.TradingName)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.DbConnectionString)
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
