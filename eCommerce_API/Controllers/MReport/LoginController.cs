@@ -21,7 +21,7 @@ namespace FarroAPI.Controllers
         [HttpPost()]
         public IActionResult Login([FromBody]LoginDto login)
         {
-            var user = _context.Card.FirstOrDefault(c => c.Email == login.Email);
+            var user = _context.Card.Select(c=> new { c.Name,c.Email,c.Password,c.AccessLevel,c.OurBranch}).FirstOrDefault(c => c.Email == login.Email);
 
             if (user == null)
             {

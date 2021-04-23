@@ -88,7 +88,7 @@ namespace FarroAPI.Entities
         public int? BranchCardId { get; set; }
         public bool NoSysQuote { get; set; }
         public string TechEmail { get; set; }
-        public byte OurBranch { get; set; }
+        public int OurBranch { get; set; }
         public int? PersonalId { get; set; }
         public long? TotalOnlineOrderPoint { get; set; }
         public bool? Registered { get; set; }
@@ -117,7 +117,7 @@ namespace FarroAPI.Entities
         public string Productline { get; set; }
         public bool? Updated { get; set; }
         public byte MemberGroup { get; set; }
-        public string StockReceiveNoticeEmail { get; set; }
-        public string SupplierGstNumber { get; set; }
+       // public string StockReceiveNoticeEmail { get; set; }
+       // public string SupplierGstNumber { get; set; }
     }
 }

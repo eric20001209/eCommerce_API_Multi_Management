@@ -570,10 +570,10 @@ namespace FarroAPI.Entities
                     .HasMaxLength(50)
                     .IsUnicode(false);
 
-                entity.Property(e => e.StockReceiveNoticeEmail)
-                    .HasColumnName("stock_receive_notice_email")
-                    .HasMaxLength(250)
-                    .IsUnicode(false);
+                //entity.Property(e => e.StockReceiveNoticeEmail)
+                //    .HasColumnName("stock_receive_notice_email")
+                //    .HasMaxLength(250)
+                //    .IsUnicode(false);
 
                 entity.Property(e => e.StopOrder).HasColumnName("stop_order");
 
@@ -582,10 +582,10 @@ namespace FarroAPI.Entities
                     .HasMaxLength(50)
                     .IsUnicode(false);
 
-                entity.Property(e => e.SupplierGstNumber)
-                    .HasColumnName("supplier_gst_number")
-                    .HasMaxLength(50)
-                    .IsUnicode(false);
+                //entity.Property(e => e.SupplierGstNumber)
+                //    .HasColumnName("supplier_gst_number")
+                //    .HasMaxLength(50)
+                //    .IsUnicode(false);
 
                 entity.Property(e => e.TechEmail)
                     .HasColumnName("tech_email")
