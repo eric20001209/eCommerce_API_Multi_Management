@@ -791,6 +791,7 @@ namespace Sync.Controllers
 					newOrder.SalesNote = invoice.SalesNote;
 					newOrder.ShippingMethod = invoice.ShippingMethod;
 					newOrder.CustomerGst = invoice.CustomerGst;
+					newOrder.StationId = invoice.StationId;
 					newOrder.Status = 1;
 
 					using (var dbContextTransaction = _context.Database.BeginTransaction())
@@ -858,6 +859,8 @@ namespace Sync.Controllers
 			newInvoice.Total = invoice.Total;
 			newInvoice.CommitDate = invoice.CommitDate;
 			newInvoice.ShippingMethod = invoice.ShippingMethod;
+			newInvoice.Sales = invoice.SalesName;
+			newInvoice.StationId = invoice.StationId;
 			newInvoice.Barcode = invoice.Barcode;
 			newInvoice.Points = invoice.Points;
 			await _context.AddAsync(newInvoice);
@@ -923,10 +926,10 @@ namespace Sync.Controllers
 				newSales.SupplierCode = item.SupplierCode ?? "";
 				newSales.Supplier = "";
 				newSales.CommitPrice = Convert.ToDecimal(item.CommitPrice);
-
-				newSales.Cat = _item.getCat("cat", newSales.Code); //_context.CodeRelations.Where(c => c.Code == Convert.ToInt32(item.code)).FirstOrDefault().Cat;
-				newSales.SCat = _item.getCat("scat", newSales.Code); //_context.CodeRelations.Where(c => c.Code == Convert.ToInt32(item.code)).FirstOrDefault().SCat;
-				newSales.SsCat = _item.getCat("sscat", newSales.Code); //_context.CodeRelations.Where(c => c.Code == Convert.ToInt32(item.code)).FirstOrDefault().SsCat;
+				newSales.SupplierPrice = item.SupplierPrice;
+				newSales.Cat = item.Cat;    // _item.getCat("cat", newSales.Code); //_context.CodeRelations.Where(c => c.Code == Convert.ToInt32(item.code)).FirstOrDefault().Cat;
+				newSales.SCat = item.SCat; // _item.getCat("scat", newSales.Code); //_context.CodeRelations.Where(c => c.Code == Convert.ToInt32(item.code)).FirstOrDefault().SCat;
+				newSales.SsCat = item.SsCat; // _item.getCat("sscat", newSales.Code); //_context.CodeRelations.Where(c => c.Code == Convert.ToInt32(item.code)).FirstOrDefault().SsCat;
 				await _context.AddAsync(newSales);
 			}
 			await _context.SaveChangesAsync();
@@ -1078,6 +1081,11 @@ namespace Sync.Controllers
 							card_id.DbType = System.Data.DbType.Int32;
 							card_id.Value = tran.CardId.ToString();
 
+							var station_id = dbCommand.CreateParameter();
+							station_id.ParameterName = "@station_id";
+							station_id.DbType = System.Data.DbType.Int32;
+							station_id.Value = tran.StationId;
+
 							var payment_method = dbCommand.CreateParameter();
 							payment_method.ParameterName = "@payment_method";
 							payment_method.DbType = System.Data.DbType.Int32;
@@ -1110,6 +1118,7 @@ namespace Sync.Controllers
 							dbCommand.Parameters.Add(Amount);
 							dbCommand.Parameters.Add(staff_id);
 							dbCommand.Parameters.Add(card_id);
+							dbCommand.Parameters.Add(station_id);
 							dbCommand.Parameters.Add(payment_method);
 							dbCommand.Parameters.Add(invoice_number);
 							dbCommand.Parameters.Add(amountList);

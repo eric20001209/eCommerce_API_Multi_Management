@@ -16,6 +16,7 @@ namespace Sync.Dtos
         public string SupplierCode { get; set; }
         public string Barcode{ get; set; }
         public decimal CommitPrice { get; set; }
+        public decimal SupplierPrice { get; set; }
         public decimal PriceGstInc { get; set; }
         public string ItemNameCn { get; set; }
         public string Cat { get; set; }
