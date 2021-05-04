@@ -22,7 +22,7 @@ namespace FarroAPI.Controllers
         {
             _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
 
-            var categoryList = await _context.CodeRelations
+            var categoryList = await _context.Sales
                 .Where(c => c.Code > 1020 || c.Code < 1001)
                 .Select(c => c.Cat)
                 .Distinct()
@@ -34,7 +34,7 @@ namespace FarroAPI.Controllers
             return Ok(catgoryDtoList);
         }
 
-        [HttpGet("api/Categories/Sales")]
+        [HttpGet("{hostId}/api/Categories/Sales")]
         public async Task<IActionResult> GetSalesCategories()
         {
             _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
@@ -50,12 +50,12 @@ namespace FarroAPI.Controllers
             return Ok(catgoryDtoList);
         }
 
-        [HttpGet("api/SubSubCategories/Item")]
+        [HttpGet("{hostId}/api/SubSubCategories/Item")]
         public async Task<IActionResult> GetItemSubSubCategories()
         {
             _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
 
-            var categoryList = await _context.CodeRelations
+            var categoryList = await _context.Sales
                 .Select(c => new { c.Cat, c.SCat, c.SsCat })
                 .Distinct()
                 .ToListAsync();
@@ -73,7 +73,7 @@ namespace FarroAPI.Controllers
             return Ok(resultList);
         }
 
-        [HttpGet("api/SubSubCategories/Sales")]
+        [HttpGet("{hostId}/api/SubSubCategories/Sales")]
         public async Task<IActionResult> GetSalesSubSubCategories()
         {
             _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;

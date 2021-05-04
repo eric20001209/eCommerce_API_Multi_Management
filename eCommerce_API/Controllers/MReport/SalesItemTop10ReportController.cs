@@ -160,7 +160,7 @@ namespace FarroAPI.Controllers
                 // LINQ to SQL Leaky abstractions pitfull
                 //.Where(i => filter.BranchId.HasValue ? (i.Daily == filter.BranchId.Value) : true)
                 .Where(i => filter.BranchId.HasValue ? (i.Branch == filter.BranchId.GetValueOrDefault()) : true)
-                .Select(i => new { i.InvoiceNumber, i.Branch })
+                .Select(i => new { i.InvoiceNumber, i.Branch})
                 .Join(
                     _context.Branch
                         .Where(b => b.Fax.ToLower() != "hidden4mreport")
@@ -168,26 +168,26 @@ namespace FarroAPI.Controllers
                         .Select(b => new { b.Id }),
                     i => i.Branch,
                     b => b.Id,
-                    (i, b) => new { i.InvoiceNumber }
+                    (i, b) => new { i.InvoiceNumber}
                 )
                 .Join(
                     _context.Sales
                         .Select(s => new { s.InvoiceNumber, s.Code, s.Quantity, s.CommitPrice, s.SupplierPrice, s.Name }),
                     i => i.InvoiceNumber,
                     s => s.InvoiceNumber,
-                    (i, s) => new { s.Code, s.Quantity, s.CommitPrice, s.SupplierPrice, s.Name }
+                    (i, s) => new { s.Code, s.Quantity, s.CommitPrice, s.SupplierPrice, s.Name, SalesName = s.Name }
                 )
-                .Join(
-                    _context.CodeRelations
-                        .Where(c => c.Code > 1020 || c.Code < 1001)
-                        .Where(c => filter.Category == null ? true : (c.Cat == filter.Category))
-                        .Select(c => new { c.Code, c.NameCn, c.Name })
-                        .ToList(),
-                    i => i.Code,
-                    c => c.Code,
-                    (i, c) => new { i.Quantity, i.CommitPrice, i.SupplierPrice, Name = c.NameCn, Description = c.Name, SalesName = i.Name}
-                )
-                .GroupBy(i => i.Description);
+                //.Join(
+                //    _context.CodeRelations
+                //        .Where(c => c.Code > 1020 || c.Code < 1001)
+                //        .Where(c => filter.Category == null ? true : (c.Cat == filter.Category))
+                //        .Select(c => new { c.Code, c.NameCn, c.Name })
+                //        .ToList(),
+                //    i => i.Code,
+                //    c => c.Code,
+                //    (i, c) => new { i.Quantity, i.CommitPrice, i.SupplierPrice, Name = c.NameCn, Description = c.Name, SalesName = i.Name}
+                //)
+                .GroupBy(i => i.Name);
 
             // Apply sales Daily report logic
             var resultList = new List<SalesItemTop10ReportDto>();

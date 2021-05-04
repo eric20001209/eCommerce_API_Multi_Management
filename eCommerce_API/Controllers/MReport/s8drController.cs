@@ -4,10 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using FarroAPI.Entities;
 using FarroAPI.Models;
-using Microsoft.AspNetCore.Http;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
+
 using System.Data.SqlClient;
 using System.Text.RegularExpressions;
 

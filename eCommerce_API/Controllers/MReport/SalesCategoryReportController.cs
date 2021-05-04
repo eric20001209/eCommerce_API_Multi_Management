@@ -77,23 +77,6 @@ namespace FarroAPI.Controllers
                                     , round(sum(s.commit_price * s.quantity), 2) as Revenue
                                     , round(sum((s.commit_price - s.supplier_price) * s.quantity), 2) as Profit
                                     , count(distinct i.invoice_number) as InvoiceQuantity
-                                    , (select round(sum(amount), 2) 
-	                                   	from budget bg
-	                                    join branch b on Branch_Id = b.id
-                                        and date >= @startDateTime
-	                                    and date < @endDateTime
-	                                    and b.fax <> 'hidden4mreport'
-	                                    " + branchIds + @"
-                                        and bg.cat = c.cat ) as Budget
-                                    , (select round(sum(qty*cost), 2) 
-	                                    from waste w 
-	                                    join branch b on w.branch_id = b.id
-	                                    join code_relations cr on w.code = cr.code
-	                                    where record_date >= @startDateTime 
-	                                    and record_date < @endDateTime
-	                                    and b.fax <> 'hidden4mreport'
-	                                    " + branchIds + @"
-	                                    and cr.cat = c.cat ) as Waste
                                     , (select round(sum(s.quantity * s.commit_price), 2)
 	                                    from invoice i
 	                                    join branch b on i.branch = b.id
@@ -121,7 +104,8 @@ namespace FarroAPI.Controllers
                                     " + branchIds + @"
                                     " + categories + @"
                                     group by c.cat
-                                    order by c.cat";
+                                    order by c.cat
+                                    Collate Database_Default";
 
                 commandTextForMinus1001 = @"select p.promo_cat as Category
                                             , round(sum(s.commit_price * s.quantity), 2) as Amount
@@ -188,11 +172,11 @@ namespace FarroAPI.Controllers
                                 ProfitWithoutGST = Convert.ToDecimal(result["Profit"] is DBNull ? 0 : result["Profit"]),
                                 // Temparorily BasketSpendWithoutGST is used as InvoiceQuantity
                                 BasketSpendWithoutGST = Convert.ToDecimal(result["InvoiceQuantity"] is DBNull ? 0 : result["InvoiceQuantity"]),
-                                BudgetWihoutGST = Convert.ToDecimal(result["Budget"] is DBNull ? 0 : result["Budget"]),
-                                WasteWithoutGST = Convert.ToDecimal(result["Waste"] is DBNull ? 0 : result["Waste"]),
+                       
+                                
                                 MarkDownWithoutGST = Convert.ToDecimal(result["MarkDown"] is DBNull ? 0 : result["MarkDown"])
                             };
-                            dto.BudgetWihoutGST = Math.Round(dto.BudgetWihoutGST, 2);
+                           
                             resultList.Add(dto);
                         }
                     }

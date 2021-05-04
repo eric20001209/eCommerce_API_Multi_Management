@@ -11,8 +11,8 @@ namespace FarroAPI.Models
         public decimal TotalWithoutGST { get; set; }
         public decimal ProfitWithoutGST { get; set; }
         public decimal BasketSpendWithoutGST { get; set; }
-        public decimal BudgetWihoutGST { get; set; }
-        public decimal WasteWithoutGST { get; set; }
+     
+       
         public decimal MarkDownWithoutGST { get; set; }
     }
 }
