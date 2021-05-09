@@ -56,7 +56,7 @@ namespace ApplicationHost
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,TradingName,DbConnectionString")] HostTenant hostTenant)
+        public async Task<IActionResult> Create([Bind("Id,TradingName,AuthCode,DbConnectionString")] HostTenant hostTenant)
         {
             if (ModelState.IsValid)
             {
@@ -88,7 +88,7 @@ namespace ApplicationHost
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,TradingName,DbConnectionString")] HostTenant hostTenant)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,TradingName,AuthCode,DbConnectionString")] HostTenant hostTenant)
         {
             if (id != hostTenant.Id)
             {

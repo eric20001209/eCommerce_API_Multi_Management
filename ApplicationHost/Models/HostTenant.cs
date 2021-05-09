@@ -14,6 +14,7 @@ namespace ApplicationHost.Models
         [Display(Name ="Tenant Id")]
         public int Id { get; set; }
         public string TradingName { get; set; }
+        public int? AuthCode { get; set; }
         public string DbConnectionString { get; set; }
 
     }

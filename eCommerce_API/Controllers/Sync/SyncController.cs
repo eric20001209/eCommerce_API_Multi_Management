@@ -19,7 +19,8 @@ using System.Net;
 
 namespace Sync.Controllers
 {
-	[AllowAnonymous]
+	//[AllowAnonymous]
+	[Authorize(Policy = "HostIdAndAuthCodeMustMatch")]
 	[Route("{hostId}/api/sync")]
 	[ApiController]
 	public class SyncController : ControllerBase
@@ -51,8 +52,8 @@ namespace Sync.Controllers
 		[HttpGet("{auth}/status")]
 		public async Task<IActionResult> getBranchUpdateStatus(string auth, [FromQuery] int branch)
 		{
-			if (auth != _config["Auth"])
-				return BadRequest("Wrong authentication code!");
+			//if (auth != _config["Auth"])
+			//	return BadRequest("Wrong authentication code!");
 
 			var apiSyncBranchList = await _context.Branch.Where(b => b.Activated == true && b.ApiSync == true)
 									.Select(c => c.Id ).ToListAsync();

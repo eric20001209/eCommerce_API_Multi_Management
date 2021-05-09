@@ -27,6 +27,8 @@ using Sync.Data;
 using FarroAPI.Entities;
 using eCommerce_API_RST_Multi.Data;
 using Microsoft.AspNetCore.Http;
+using eCommerce_API_RST_Multi.Services.Sync;
+using Microsoft.AspNetCore.Authorization;
 
 namespace eCommerce_API
 {
@@ -93,6 +95,14 @@ namespace eCommerce_API
             services.AddTransient<iMailService, MailService>();
             Path.Combine(Directory.GetCurrentDirectory(), "libwkhtmltox.dll");
             services.AddSingleton(typeof(IConverter), new SynchronizedConverter(new PdfTools()));   //DinkToPdf DI
+
+            /*  Authorize Sync  */
+            services.AddScoped<IAuthorizationHandler, HostIdAndAuthCodeMustMatchRequirementHandler>();
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("HostIdAndAuthCodeMustMatch", policy => policy.Requirements.Add(new HostIdAndAuthCodeMustMatchRequirement()));
+            });
+            /*  */
 
             //config automapper
             //services.AddAutoMapper(typeof(Startup));
