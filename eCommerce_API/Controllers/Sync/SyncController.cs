@@ -14,8 +14,14 @@ using Sync.Data;
 using Sync.Dtos;
 using Sync.Models;
 using Sync.Services;
-//using AutoMapper;
+using AutoMapper;
 using System.Net;
+using eCommerce_API_RST_Multi.Models.Sync;
+using eCommerce_API_RST_Multi.Dto.Sync;
+using ceTe.DynamicPDF.HtmlConverter;
+using Microsoft.AspNetCore.JsonPatch;
+using System.Net.Mail;
+using System.Text.RegularExpressions;
 
 namespace Sync.Controllers
 {
@@ -32,11 +38,11 @@ namespace Sync.Controllers
 		private readonly IButton _button;
 		private readonly ICard _card;
 //		private readonly IHttpContextAccessor _httpContextAccessor;
-	//	private readonly IMapper _mapper;
+		private readonly IMapper _mapper;
 		public SyncController(IConfiguration config, 
 			Data.AppDbContext context, 
 			IItem item, IButton button, ICard card, ILogger<SyncController> logger
-							//	, IMapper mapper
+								, IMapper mapper
 							//, IHttpContextAccessor httpContextAccessor
 								)
 		{
@@ -46,7 +52,7 @@ namespace Sync.Controllers
 			_button = button;
 			_logger = logger;
 			_card = card;
-			//			_mapper = mapper;
+			_mapper = mapper;
 
 		}
 		[HttpGet("{auth}/status")]
@@ -1250,6 +1256,605 @@ namespace Sync.Controllers
 			}
 				
 			return Ok();
+		}
+
+		/****************/
+		[HttpPost("{auth}/card/new")]
+		public async Task<IActionResult> newCard([FromBody] CardCreateDto input)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+			try
+			{
+				if (await emailExists(input.Email))
+					return BadRequest("Email Exists!");
+				if (await barcodeExists(input.Barcode))
+					return BadRequest("Barcode Exists!");
+				if (input.Barcode == null || input.Barcode == "")
+				{
+					input.Barcode = Guid.NewGuid().ToString();
+				}
+				var newCard = new Card
+				{
+					Email = input.Email,
+					Name = input.Name,
+					//					Password = input.Password,
+					Phone = input.Phone,
+					Barcode = input.Barcode,
+					Type = input.Type
+				};
+
+				await _context.Cards.AddAsync(newCard);
+				await _context.SaveChangesAsync();
+
+				/*	insert into updated_card*/
+
+
+				var cardDto = _mapper.Map<CardDto>(newCard);
+				return Ok(cardDto);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex.ToString());
+				return StatusCode((int)HttpStatusCode.InternalServerError, ex.Message);
+			}
+		}
+		private async Task<bool> emailExists(string email)
+		{
+			var exists = await _context.Cards.AnyAsync(c => c.Email == email);
+			if (exists)
+				return true;
+			else
+				return false;
+		}
+		private async Task<bool> barcodeExists(string barcode)
+		{
+			var exists = await _context.Cards.AnyAsync(c => c.Barcode == barcode);
+			if (exists)
+				return true;
+			else
+				return false;
+		}
+		private async Task<bool> categoryExists(Catalog catalog)
+		{
+			var result = await _context.Category.AnyAsync(c => c == catalog);
+			return result;
+		}
+
+		private async Task<bool> itemBarcodeExists(string barcode)
+		{
+			var exists = await _context.Barcode.AnyAsync(c => c.Barcode1 == barcode);
+			if (exists)
+				return true;
+			else
+				return false;
+		}
+
+		[HttpPost("{auth}/urltoPdf")]
+		public async Task<IActionResult> pdfCreate([FromBody] PdfDto input)
+		{
+			ConversionOptions options = new ConversionOptions(PageSize.A4, PageOrientation.Portrait, 5.0f);
+			var directory = _config["RootPath"] + "//invoice//" + input.InvoiceNumber + ".pdf";
+			try
+			{
+				// Set Metadata for the PDF
+				options.Author = "Myself";
+				options.Title = "My Webpage";
+				// Set Header and Footer text
+				options.Header = "";
+				// "<div style=\"text-align:center;display:inline-block;width:100%;font-size:12px;\">" +
+				//"<span class=\"date\"></span></div>";
+				options.Footer = "";
+				//"<div style=\"text-align:center;display:inline-block;width:100%;font-size:12px;\">" +
+				//                    "Page <span class=\"pageNumber\"></span> of <span class=\"totalPages\"></span></div>";
+				// Convert with Options
+				Converter.Convert(new Uri(input.Url), directory, options);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(ex.ToString());
+			}
+			return Ok("Successfully created PDF document.");
+		}
+		private async Task<bool> pdfCreate(string invoice_number, string url)
+		{
+			try
+			{
+				ConversionOptions options = new ConversionOptions(PageSize.A4, PageOrientation.Portrait, 5.0f);
+				var directory = _config["RootPath"] + "//invoice//" + invoice_number + ".pdf";
+				options.Author = "Myself";
+				options.Title = "My Webpage";
+				options.Header = "";
+				options.Footer = "";
+				Converter.Convert(new Uri(url), directory, options);
+				return true;
+			}
+			catch (Exception)
+			{
+				return false;
+			}
+
+		}
+
+		[HttpPost("{auth}/createItem")]
+		public async Task<IActionResult> createItem([FromBody] CreateItemDto createItemDto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest();
+
+			var cloudMaxCode = await _context.CodeRelations.MaxAsync(c => c.Code);
+			int newCode = cloudMaxCode + 1;
+
+			//if localMaxCode is greater than cloudMaxCode, then newCode equals to Local one 
+			newCode = newCode < createItemDto.LocalMaxCode ? createItemDto.LocalMaxCode : newCode;
+
+			var cat = (createItemDto.CatNew != null && createItemDto.CatNew != "") ? createItemDto.CatNew : createItemDto.Cat;
+			var scat = (createItemDto.SCatNew != null && createItemDto.SCatNew != "") ? createItemDto.SCatNew : createItemDto.SCat;
+			var sscat = (createItemDto.SSCatNew != null && createItemDto.SSCatNew != "") ? createItemDto.SSCatNew : createItemDto.SSCat;
+			var brand = (createItemDto.BrandNew != null && createItemDto.BrandNew != "") ? createItemDto.BrandNew : createItemDto.Brand;
+
+			using (var dbTransaction = await _context.Database.BeginTransactionAsync())
+			{
+				try
+				{
+					if (createItemDto.SupplierCode == null || createItemDto.SupplierCode == "")
+					{
+						createItemDto.SupplierCode = newCode.ToString();
+					}
+					/*	1. add to code_relations */
+					CodeRelations codeRelations = new CodeRelations()
+					{
+						Id = createItemDto.Id.ToString(),
+						Code = newCode,
+						Name = createItemDto.Name,
+						NameCn = createItemDto.Description,
+						SupplierCode = createItemDto.SupplierCode,
+						Brand = brand,
+						Cat = cat,
+						SCat = scat,
+						SsCat = sscat,
+						Price1 = createItemDto.Price ?? 0,
+						ManualCostFrd = createItemDto.Cost ?? 0,
+						SupplierPrice = createItemDto.Cost ?? 0,
+						AverageCost = createItemDto.Cost ?? 0,
+						Barcode = createItemDto.Barcode,
+						HasScale = createItemDto.AutoWeigh ?? false,
+						IsBarcodeprice = createItemDto.PriceBarcode ?? false,
+						IsIdCheck = createItemDto.IdCheck ?? false
+					};
+					var addCodeRelationsResult = await _context.CodeRelations.AddAsync(codeRelations);
+
+					/*	2. add to product	*/
+					Product product = new Product
+					{
+						Code = newCode,
+						Name = createItemDto.Name,
+						NameCn = createItemDto.Description,
+						SupplierCode = createItemDto.SupplierCode,
+						Brand = brand,
+						Cat = cat,
+						SCat = scat,
+						SSCat = sscat,
+						Hot = false,
+						Price = createItemDto.Price ?? 0,
+						SupplierPrice = createItemDto.Cost ?? 0
+					};
+					var addProductResult = await _context.Products.AddAsync(product);
+
+					/*	3. add to barcode	*/
+					if (!await itemBarcodeExists(createItemDto.Barcode))
+					{
+						Barcode barcode = new Barcode
+						{
+							ItemCode = newCode,
+							Barcode1 = createItemDto.Barcode
+						};
+						var addBarcodeResult = await _context.Barcode.AddAsync(barcode);
+					}
+
+					/*	4. add to stock_qty	*/
+					StockQty stockQty = new StockQty
+					{
+						Code = newCode,
+						Qty = 0,
+						BranchId = createItemDto.BranchId,
+						SupplierPrice = createItemDto.Cost ?? 0,
+						AllocatedStock = 0,
+						AverageCost = 0,
+						QposPrice = 0,
+						WarningStock = 0,
+						LastStock = 0,
+						SpStartDate = DateTime.Now,
+						SpEndDate = DateTime.Now
+					};
+					var addStockQtyResult = await _context.StockQty.AddAsync(stockQty);
+
+					/*	5. add to code_branch	*/
+					CodeBranch codeBranch = new CodeBranch
+					{
+						Inactive = false,
+						Code = newCode,
+						BranchId = createItemDto.BranchId,
+						Price1 = createItemDto.Price,
+						Price2 = 0
+
+					};
+					var addCodeBranchResult = await _context.CodeBranch.AddAsync(codeBranch);
+
+					/*	6. add to catalog	*/
+					if (createItemDto.BrandNew != null && createItemDto.BrandNew != "")
+					{
+						Catalog catalog = new Catalog
+						{
+							Seq = "99",
+							Cat = "Brands",
+							SCat = createItemDto.BrandNew,
+							SSCat = ""
+						};
+						if (await categoryExists(catalog))
+							await _context.Category.AddAsync(catalog);
+					}
+					if (createItemDto.CatNew != null && createItemDto.CatNew != "")
+					{
+						Catalog catalog = new Catalog
+						{
+							Seq = "99",
+							Cat = createItemDto.CatNew,
+							SCat = "",
+							SSCat = ""
+						};
+						if (await categoryExists(catalog))
+							await _context.Category.AddAsync(catalog);
+					}
+
+					if (createItemDto.CatNew != null && createItemDto.CatNew != "" && createItemDto.SCatNew != null && createItemDto.SCatNew != "")
+					{
+						Catalog catalog = new Catalog
+						{
+							Seq = "99",
+							Cat = createItemDto.CatNew ?? "",
+							SCat = createItemDto.SCatNew ?? "",
+							SSCat = ""
+						};
+						if (await categoryExists(catalog))
+							await _context.Category.AddAsync(catalog);
+					}
+
+					if (createItemDto.CatNew != null && createItemDto.CatNew != "" && createItemDto.SCatNew != null && createItemDto.SCatNew != "" && createItemDto.SSCatNew != null && createItemDto.SSCatNew != "")
+					{
+						Catalog catalog = new Catalog
+						{
+							Seq = "99",
+							Cat = createItemDto.CatNew ?? "",
+							SCat = createItemDto.SCatNew ?? "",
+							SSCat = createItemDto.SSCatNew ?? ""
+						};
+						if (await categoryExists(catalog))
+							await _context.Category.AddAsync(catalog);
+					}
+
+					/*	add to dbcontext	*/
+					var addToContextResult = await _context.SaveChangesAsync();
+					dbTransaction.Commit();
+
+					MessageDto messageDto = new MessageDto();
+					messageDto.Processed.Add(new
+					{
+						Msg = "Processed successfully ",
+						Code = newCode
+					});
+					messageDto.Code = "0";
+					messageDto.Msg = "success!";
+					return Ok(messageDto);
+				}
+				catch (Exception ex)
+				{
+					dbTransaction.Rollback();
+					_logger.LogError(ex.Message + "\r\n" + $"Error, cannot add new item");
+					return BadRequest(ex);
+				}
+				finally
+				{
+
+				}
+			}
+		}
+
+		[HttpPatch("{auth}/editItem/{branchId}/{code}/{timestamp}")]
+		public async Task<IActionResult> editItem(int branchId, int code, int timestamp, [FromBody] JsonPatchDocument<EditItemDto> patchDoc)
+		{
+
+
+			if (!ModelState.IsValid)
+			{
+				MessageDto message = new MessageDto();
+				message.Processed.Add(new
+				{
+					Msg = "Process fail, model validation fail! ",
+					Code = code
+				});
+				message.Code = "1";
+				message.Msg = "fail!";
+				return BadRequest(message);
+			}
+
+			if (patchDoc == null)
+			{
+				MessageDto message = new MessageDto();
+				message.Processed.Add(new
+				{
+					Msg = "Process fail, model validation fail! ",
+					Code = code
+				});
+				message.Code = "1";
+				message.Msg = "fail!";
+				return BadRequest(message);
+			}
+			//code_relations table to update
+			var codeRelationsToUpdate = _context.CodeRelations.Where(c => c.Code == code).FirstOrDefault();
+			if (codeRelationsToUpdate == null)
+			{
+				_logger.LogError($"cannot find item ,code {code}");
+				MessageDto message = new MessageDto();
+				message.Processed.Add(new
+				{
+					Msg = "Cannot find this item! ",
+					Code = code
+				});
+				message.Code = "1";
+				message.Msg = "fail!";
+				return NotFound(message);
+			}
+
+			var itemFromCloud = await _context.UpdatedItem.FirstOrDefaultAsync(c => c.ItemCode == code && c.BranchId == branchId);
+			if (itemFromCloud != null)
+			{
+				int? timeStampFromDb = int.Parse(itemFromCloud.TimeStampS);
+				if (timeStampFromDb != null)
+				{
+					if (timestamp < timeStampFromDb)
+					{
+						MessageDto messageDto = new MessageDto();
+						messageDto.Processed.Add(new
+						{
+							Msg = "Process fail, cloud data is newer than local ",
+							Code = code
+						});
+						messageDto.Code = "1";
+						messageDto.Msg = "fail!";
+						return Ok(messageDto);
+					}
+				}
+			}
+
+			//stock_qty table to update
+			var stockQtyToUpdate = _context.StockQty.Where(c => c.Code == code && c.BranchId == branchId).FirstOrDefault();
+			//if (stockQtyToUpdate == null)
+			//{
+			//	_logger.LogError($"cannot find code in stock_qty ,code {code}, branch {branchId}");
+			//	return NotFound($"cannot find code in stock_qty ,code {code}, branch {branchId}");
+			//}
+
+			//code_branch to update
+			var codeBranchToUpdate = _context.CodeBranch.Where(c => c.Code == code && c.BranchId == branchId).FirstOrDefault();
+			//if (codeBranchToUpdate == null)
+			//{
+			//	_logger.LogError($"cannot find code in code_branch ,code {code}, branch {branchId}");
+			//	return NotFound($"cannot find code in code_branch ,code {code}, branch {branchId}");
+			//}
+
+			using (var dbTransaction = await _context.Database.BeginTransactionAsync())
+			{
+				try
+				{
+					/*	1. update code_relations */
+					var codeRelationsToPatch = new EditItemDto()
+					{
+						Name = codeRelationsToUpdate.Name,
+						Description = codeRelationsToUpdate.NameCn,
+						Price = codeRelationsToUpdate.Price1,
+						Cost = codeRelationsToUpdate.ManualCostFrd,
+						Cat = codeRelationsToUpdate.Cat,
+						SCat = codeRelationsToUpdate.SCat,
+						SSCat = codeRelationsToUpdate.SsCat,
+						SupplierCode = codeRelationsToUpdate.SupplierCode,
+						AutoWeigh = codeRelationsToUpdate.HasScale,
+						PriceBarcode = codeRelationsToUpdate.IsBarcodeprice,
+						IdCheck = codeRelationsToUpdate.IsIdCheck,
+						IsSpecial = codeRelationsToUpdate.IsSpecial,
+						SpecialPrice = codeRelationsToUpdate.SpecialPrice,
+						SpecialStartTime = codeRelationsToUpdate.SpecialPriceStartDate ?? DateTime.MaxValue,
+						SpecialEndTime = codeRelationsToUpdate.SpecialPriceEndDate ?? DateTime.MinValue,
+						PromoId = codeRelationsToUpdate.PromoId,
+						Barcode = codeRelationsToUpdate.Barcode,
+						LevelPrice1 = codeRelationsToUpdate.LevelPrice1,
+						LevelPrice2 = codeRelationsToUpdate.LevelPrice2,
+						LevelPrice3 = codeRelationsToUpdate.LevelPrice3,
+						LevelPrice4 = codeRelationsToUpdate.LevelPrice4,
+						LevelPrice5 = codeRelationsToUpdate.LevelPrice5,
+						LevelPrice6 = codeRelationsToUpdate.LevelPrice6
+					};
+
+					patchDoc.ApplyTo(codeRelationsToPatch, ModelState);
+					if (!ModelState.IsValid)
+						return BadRequest(ModelState);
+
+					codeRelationsToUpdate.Name = codeRelationsToPatch.Name;
+					codeRelationsToUpdate.NameCn = codeRelationsToPatch.Description;
+					codeRelationsToUpdate.Price1 = codeRelationsToPatch.Price ?? 0;
+					codeRelationsToUpdate.ManualCostFrd = codeRelationsToPatch.Cost ?? 0;
+					codeRelationsToUpdate.AverageCost = codeRelationsToPatch.Cost ?? 0;
+					codeRelationsToUpdate.Cat = codeRelationsToPatch.Cat;
+					codeRelationsToUpdate.SCat = codeRelationsToPatch.SCat;
+					codeRelationsToUpdate.SsCat = codeRelationsToPatch.SSCat;
+					codeRelationsToUpdate.SupplierCode = codeRelationsToPatch.SupplierCode;
+					codeRelationsToUpdate.HasScale = codeRelationsToPatch.AutoWeigh ?? false;
+					codeRelationsToUpdate.IsBarcodeprice = codeRelationsToPatch.PriceBarcode ?? false;
+					codeRelationsToUpdate.IsIdCheck = codeRelationsToPatch.IdCheck ?? false;
+					codeRelationsToUpdate.IsSpecial = codeRelationsToPatch.IsSpecial;
+					codeRelationsToUpdate.SpecialPrice = codeRelationsToPatch.SpecialPrice;
+					codeRelationsToUpdate.SpecialPriceStartDate = codeRelationsToPatch.SpecialStartTime;
+					codeRelationsToUpdate.SpecialPriceEndDate = codeRelationsToPatch.SpecialEndTime;
+					codeRelationsToUpdate.PromoId = codeRelationsToPatch.PromoId;
+					codeRelationsToUpdate.Barcode = codeRelationsToPatch.Barcode;
+					codeRelationsToUpdate.LevelPrice1 = codeRelationsToPatch.LevelPrice1 ?? 0;
+					codeRelationsToUpdate.LevelPrice2 = codeRelationsToPatch.LevelPrice2 ?? 0;
+					codeRelationsToUpdate.LevelPrice3 = codeRelationsToPatch.LevelPrice3 ?? 0;
+					codeRelationsToUpdate.LevelPrice4 = codeRelationsToPatch.LevelPrice4 ?? 0;
+					codeRelationsToUpdate.LevelPrice5 = codeRelationsToPatch.LevelPrice5 ?? 0;
+					codeRelationsToUpdate.LevelPrice6 = codeRelationsToPatch.LevelPrice6 ?? 0;
+
+					/*	update code_branch	*/
+					if (codeBranchToUpdate != null)
+					{
+						var codeBranchToPatch = new EditItemDto()
+						{
+							BranchId = branchId,
+							Price = codeBranchToUpdate.Price1
+						};
+
+						patchDoc.ApplyTo(codeBranchToPatch, ModelState);
+						if (!ModelState.IsValid)
+							return BadRequest(ModelState);
+
+						codeBranchToUpdate.Price1 = codeBranchToPatch.Price;
+						codeBranchToUpdate.Inactive = false;
+					}
+
+					/*	update stock_qty	*/
+					if (stockQtyToUpdate != null)
+					{
+						var stockQtyToPatch = new EditItemDto
+						{
+							Qty = stockQtyToUpdate.Qty
+						};
+						patchDoc.ApplyTo(stockQtyToPatch, ModelState);
+						if (!ModelState.IsValid)
+							return BadRequest(ModelState);
+						stockQtyToUpdate.Qty = stockQtyToPatch.Qty;
+					}
+					var updateResult = await _context.SaveChangesAsync();
+					dbTransaction.Commit();
+
+					MessageDto messageDto = new MessageDto();
+					messageDto.Processed.Add(new
+					{
+						Msg = "Processed successfully ",
+						Code = code
+					});
+					messageDto.Code = "0";
+					messageDto.Msg = "success!";
+					return Ok(messageDto);
+				}
+				catch (Exception ex)
+				{
+
+					dbTransaction.Rollback();
+					_logger.LogError(ex.Message + "\r\n" + $"Error, cannot edit item");
+					return BadRequest(ex);
+				}
+			}
+
+		}
+
+		[HttpPost("{auth}/editBarcodeAndSpecial/{branchId}/{code}/{timestamp}")]
+		public async Task<IActionResult> editBarcodeAndSpecial(int branchId, int code, int timestamp, [FromBody] EditItemDto editItemDto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest();
+
+			var itemFromCloud = await _context.UpdatedItem.FirstOrDefaultAsync(c => c.ItemCode == code && c.BranchId == branchId);
+			if (itemFromCloud != null)
+			{
+				int? timeStampFromDb = int.Parse(itemFromCloud.TimeStampS);
+				if (timeStampFromDb != null)
+				{
+					if (timestamp < timeStampFromDb)
+					{
+						MessageDto messageDto = new MessageDto();
+						messageDto.Processed.Add(new
+						{
+							Msg = "Process fail, cloud data is newer than local ",
+							Code = code
+						});
+						messageDto.Code = "1";
+						messageDto.Msg = "fail!";
+						return Ok(messageDto);
+					}
+				}
+			}
+
+			using (var dbTransaction = await _context.Database.BeginTransactionAsync())
+			{
+				try
+				{
+					var barcodesInCloud = await _context.Barcode.Where(b => b.ItemCode == code).Select(c => c.Barcode1).ToListAsync();
+					var barcodes = editItemDto.Barcodes;
+					if (barcodes.Count > 0)
+					{
+						foreach (var barcode in barcodes)
+						{
+							if (!barcodesInCloud.Contains(barcode.Barcode))
+							{
+								Barcode newBarcode = new Barcode
+								{
+									ItemCode = code,
+									ItemQty = barcode.ItemQty,
+									Barcode1 = barcode.Barcode,
+									PackagePrice = barcode.PackagePrice
+								};
+								var addBarcodeResult = await _context.Barcode.AddAsync(newBarcode);
+							}
+						}
+					}
+
+
+					var storeSpecialInCloud = await _context.StoreSpecial.Where(b => b.Code == code && b.BranchId == branchId).FirstOrDefaultAsync();
+
+					StoreSpecial storespecial = new StoreSpecial
+					{
+						Code = code,
+						BranchId = branchId,
+						Enabled = editItemDto.IsSpecial,
+						Price = editItemDto.SpecialPrice ?? 0,
+						PriceStartDate = editItemDto.SpecialStartTime,
+						PriceEndDate = editItemDto.SpecialEndTime
+					};
+
+					if (storeSpecialInCloud == null)
+					{
+						var addStoreSpecialResult = await _context.StoreSpecial.AddAsync(storespecial);
+					}
+					else
+					{
+						storeSpecialInCloud.BranchId = storespecial.BranchId;
+						storeSpecialInCloud.Enabled = storespecial.Enabled;
+						storeSpecialInCloud.Price = storespecial.Price;
+						storeSpecialInCloud.PriceStartDate = storespecial.PriceStartDate;
+						storeSpecialInCloud.PriceEndDate = storespecial.PriceEndDate;
+						var updateStoreSpecialResult = _context.StoreSpecial.Update(storeSpecialInCloud);
+					}
+
+					var addToContextResult = await _context.SaveChangesAsync();
+					dbTransaction.Commit();
+					MessageDto messageDto = new MessageDto();
+					messageDto.Processed.Add(new
+					{
+						Msg = "Processed successfully ",
+						Code = code
+					});
+					messageDto.Code = "0";
+					messageDto.Msg = "success!";
+					return Ok(messageDto);
+				}
+				catch (Exception ex)
+				{
+					dbTransaction.Rollback();
+					_logger.LogError(ex.Message + "\r\n" + $"Error");
+					return BadRequest(ex);
+				}
+			}
+
 		}
 	}
 }

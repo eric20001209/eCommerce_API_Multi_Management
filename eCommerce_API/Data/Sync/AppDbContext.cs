@@ -10,7 +10,7 @@ using Sync.Models;
 using eCommerce_API_RST_Multi.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-
+using eCommerce_API_RST_Multi.Models.Sync;
 
 namespace Sync.Data
 {
@@ -54,6 +54,7 @@ namespace Sync.Data
         public virtual DbSet<OrderItem> OrderItem { get; set; }
         public virtual DbSet<Orders> Orders { get; set; }
         public virtual DbSet<Image> Images { get; set; }
+        public virtual DbSet<Product> Products { get; set; }
         public virtual DbSet<ProductDetails> ProductDetails { get; set; }
         public virtual DbSet<PromotionList> PromotionLists { get; set; }
         public virtual DbSet<PromotionGroup> PromotionGroups { get; set; }
@@ -154,6 +155,7 @@ namespace Sync.Data
                 entity.Property(e => e.Name).HasColumnName("name");
                 entity.Property(e => e.Activated).HasColumnName("activated");
                 entity.Property(e => e.ApiSync).HasColumnName("api_sync");
+                entity.Property(e => e.AuthCode).HasColumnName("auth_code");
             });
             modelBuilder.Entity<Button>(entity =>
             {
@@ -747,6 +749,50 @@ namespace Sync.Data
                     .HasColumnName("stock_location")
                     .HasMaxLength(150);
             });
+
+
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.HasKey(x => new { x.Code, x.Name, x.NameCn });
+                entity.ToTable("product");
+                entity.Property(e => e.Code).HasColumnName("code");
+                entity.Property(e => e.Name)
+                    .HasColumnName("name")
+                    .HasMaxLength(255);
+                entity.Property(e => e.NameCn)
+                    .HasColumnName("name_cn")
+                    .HasMaxLength(255);
+                entity.Property(e => e.Brand)
+                    .HasColumnName("brand")
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Cat)
+                    .HasColumnName("cat")
+                    .HasMaxLength(50);
+                entity.Property(e => e.SCat)
+                    .HasColumnName("s_cat")
+                    .HasMaxLength(50);
+                entity.Property(e => e.SSCat)
+                    .HasColumnName("ss_cat")
+                    .HasMaxLength(50);
+                entity.Property(e => e.Hot)
+                    .HasColumnName("hot")
+                    .HasDefaultValueSql("((0))");
+                entity.Property(e => e.Price)
+                    .HasColumnName("price");
+
+                entity.Property(e => e.Supplier)
+                    .HasColumnName("supplier")
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.SupplierCode)
+                    .HasColumnName("supplier_code")
+                    .HasMaxLength(50)
+                    .IsUnicode(false);
+                entity.Property(e => e.SupplierPrice).HasColumnName("supplier_price").HasDefaultValueSql("(0)");
+            });
+
             modelBuilder.Entity<CodeRelations>(entity =>
             {
                 entity.ToTable("code_relations");

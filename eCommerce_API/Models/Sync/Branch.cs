@@ -11,5 +11,6 @@ namespace Sync.Models
 		public string Name { get; set; }
 		public bool Activated{ get; set; }
 		public bool ApiSync{ get; set; }
+		public string AuthCode { get; set; }
 	}
 }

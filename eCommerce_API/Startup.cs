@@ -29,6 +29,7 @@ using eCommerce_API_RST_Multi.Data;
 using Microsoft.AspNetCore.Http;
 using eCommerce_API_RST_Multi.Services.Sync;
 using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
 
 namespace eCommerce_API
 {
@@ -79,6 +80,16 @@ namespace eCommerce_API
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             //services.AddSingleton<HttpContext>();
             services.AddHttpContextAccessor();
+
+
+            /* automapper */
+            var mapperConfig = new MapperConfiguration(mc =>
+            {
+                mc.AddProfile(new AutoMapping());
+            });
+
+            IMapper mapper = mapperConfig.CreateMapper();
+            services.AddSingleton(mapper);
 
             services.AddCors();
 //          string connectionString = @"Server=192.168.1.204\sql2012;Database=wanfang_cloud14;User Id=eznz;password=9seqxtf7";

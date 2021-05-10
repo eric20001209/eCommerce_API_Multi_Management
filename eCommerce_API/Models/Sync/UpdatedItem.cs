@@ -13,5 +13,7 @@ namespace Sync.Models
 		public bool Delete { get; set; }
 		public DateTime DateUpdated { get; set; }
 		public byte[] TimeStamp { get; set; }
+		//this attibute is for record item update time
+		public string TimeStampS { get; set; }
 	}
 }
