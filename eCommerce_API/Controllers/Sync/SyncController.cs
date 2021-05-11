@@ -1856,5 +1856,212 @@ namespace Sync.Controllers
 			}
 
 		}
+
+		[HttpPost("{auth}/uploadItems/{branchId}")]
+		public async Task<IActionResult> uploadItems(int branchId, [FromBody] IEnumerable<UploadItemDto> uploadItemList)
+		{
+			MessageDto messageDto = new MessageDto();
+			if (!ModelState.IsValid)
+			{
+				messageDto.Code = "1";
+				messageDto.Msg = "model validation fail!";
+				return BadRequest(messageDto);
+			}
+			if (uploadItemList == null)
+			{
+				messageDto.Code = "1";
+				messageDto.Msg = "no item found in item list!";
+				return BadRequest(messageDto);
+			}
+			try
+			{
+				foreach (var createItemDto in uploadItemList)
+				{
+					var code = createItemDto.Code;
+					if (await _context.CodeRelations.AnyAsync(c => c.Code == code)) //item exists! then pass
+					{
+						messageDto.Skipped.Add(new { Msg = "This item exists on cloud ", Code = code });
+						continue;
+					}
+
+					//if item does not exist, insert into cloud db
+					using (var dbTransaction = await _context.Database.BeginTransactionAsync())
+					{
+						try
+						{
+							if (createItemDto.SupplierCode == null || createItemDto.SupplierCode == "")
+							{
+								createItemDto.SupplierCode = code.ToString();
+							}
+							/*	1. add to code_relations */
+							CodeRelations codeRelations = new CodeRelations()
+							{
+								Id = createItemDto.Id.ToString(),
+								Code = code,
+								Name = createItemDto.Name,
+								NameCn = createItemDto.Description,
+								SupplierCode = createItemDto.SupplierCode,
+								Brand = createItemDto.Brand,
+								Cat = createItemDto.Cat,
+								SCat = createItemDto.SCat,
+								SsCat = createItemDto.SSCat,
+								Price1 = createItemDto.Price ?? 0,
+								ManualCostFrd = createItemDto.Cost ?? 0,
+								SupplierPrice = createItemDto.Cost ?? 0,
+								AverageCost = createItemDto.Cost ?? 0,
+								Barcode = createItemDto.Barcode,
+								HasScale = createItemDto.AutoWeigh ?? false,
+								IsBarcodeprice = createItemDto.PriceBarcode ?? false,
+								IsIdCheck = createItemDto.IdCheck ?? false
+							};
+							var addCodeRelationsResult = await _context.CodeRelations.AddAsync(codeRelations);
+
+							/*	2. add to product	*/
+							Product product = new Product
+							{
+								Code = code,
+								Name = createItemDto.Name,
+								NameCn = createItemDto.Description,
+								SupplierCode = createItemDto.SupplierCode,
+								Brand = createItemDto.Brand,
+								Cat = createItemDto.Cat,
+								SCat = createItemDto.SCat,
+								SSCat = createItemDto.SSCat,
+								Hot = false,
+								Price = createItemDto.Price ?? 0,
+								SupplierPrice = createItemDto.Cost ?? 0
+							};
+							var addProductResult = await _context.Products.AddAsync(product);
+
+							/*	3. add to barcode	*/
+							if (!await itemBarcodeExists(createItemDto.Barcode))
+							{
+								Barcode barcode = new Barcode
+								{
+									ItemCode = code,
+									Barcode1 = createItemDto.Barcode
+								};
+								var addBarcodeResult = await _context.Barcode.AddAsync(barcode);
+							}
+
+							/*	4. add to stock_qty	*/
+							StockQty stockQty = new StockQty
+							{
+								Code = code,
+								Qty = 0,
+								BranchId = createItemDto.BranchId,
+								SupplierPrice = createItemDto.Cost ?? 0,
+								AllocatedStock = 0,
+								AverageCost = 0,
+								QposPrice = 0,
+								WarningStock = 0,
+								LastStock = 0,
+								SpStartDate = DateTime.Now,
+								SpEndDate = DateTime.Now
+							};
+							var addStockQtyResult = await _context.StockQty.AddAsync(stockQty);
+
+							/*	5. add to code_branch	*/
+							CodeBranch codeBranch = new CodeBranch
+							{
+								Inactive = false,
+								Code = code,
+								BranchId = createItemDto.BranchId,
+								Price1 = createItemDto.Price,
+								Price2 = 0
+
+							};
+							var addCodeBranchResult = await _context.CodeBranch.AddAsync(codeBranch);
+
+							/*	6. add to catalog	*/
+							if (createItemDto.Brand != null && createItemDto.Brand != "")
+							{
+								Catalog catalog = new Catalog
+								{
+									Seq = "99",
+									Cat = "Brands",
+									SCat = createItemDto.Brand,
+									SSCat = ""
+								};
+								if (await categoryExists(catalog))
+									await _context.Category.AddAsync(catalog);
+							}
+							if (createItemDto.Cat != null && createItemDto.Cat != "")
+							{
+								Catalog catalog = new Catalog
+								{
+									Seq = "99",
+									Cat = createItemDto.Cat,
+									SCat = "",
+									SSCat = ""
+								};
+								if (await categoryExists(catalog))
+									await _context.Category.AddAsync(catalog);
+							}
+
+							if (createItemDto.Cat != null && createItemDto.Cat != "" && createItemDto.SCat != null && createItemDto.SCat != "")
+							{
+								Catalog catalog = new Catalog
+								{
+									Seq = "99",
+									Cat = createItemDto.Cat ?? "",
+									SCat = createItemDto.SCat ?? "",
+									SSCat = ""
+								};
+								if (await categoryExists(catalog))
+									await _context.Category.AddAsync(catalog);
+							}
+
+							if (createItemDto.Cat != null && createItemDto.Cat != "" && createItemDto.SCat != null && createItemDto.SCat != "" && createItemDto.SSCat != null && createItemDto.SSCat != "")
+							{
+								Catalog catalog = new Catalog
+								{
+									Seq = "99",
+									Cat = createItemDto.Cat ?? "",
+									SCat = createItemDto.SCat ?? "",
+									SSCat = createItemDto.SSCat ?? ""
+								};
+								if (await categoryExists(catalog))
+									await _context.Category.AddAsync(catalog);
+							}
+
+							/*	add to dbcontext	*/
+							var addToContextResult = await _context.SaveChangesAsync();
+							dbTransaction.Commit();
+
+							messageDto.Processed.Add(new
+							{
+								Msg = "Processed successfully ",
+								Code = code
+							});
+							//messageDto.Code = "0";
+							//messageDto.Msg = "success!";
+							//return Ok(messageDto);
+						}
+						catch (Exception ex)
+						{
+							dbTransaction.Rollback();
+							_logger.LogError(ex.Message + "\r\n" + $"Error, cannot add new item");
+							return BadRequest(ex);
+						}
+						finally
+						{
+
+						}
+					}
+				}
+				messageDto.Code = "0";
+				messageDto.Msg = "success!";
+				return Ok(messageDto);
+
+			}
+			catch (Exception ex)
+			{
+
+				_logger.LogError(ex.Message + "\r\n" + $"Error, cannot add new item");
+				return BadRequest(ex);
+			}
+
+		}
 	}
 }
